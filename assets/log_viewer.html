@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>SMS Notifier Logs</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0 }
+html, body {
+    height: 100%;
+    background: #1e1e1e;
+    color: #ccc;
+    overflow: hidden;
+    font: 0.875rem/1.6 "Cascadia Code", "Source Code Pro", monospace;;
+    display: flex;
+    flex-direction: column;
+}
+header {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    background: #252526;
+    border-bottom: 1px solid #2d2d2d;
+    user-select: none;
+    gap: 1.5rem;
+}
+header h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    
+}
+/* 连接状态指示器 */
+header aside {
+    font-size: .8rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    color: #757575;
+}
+header aside::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+    display: inline-block;
+    box-shadow: 0 0 6px currentColor;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+/* 状态颜色 */
+header aside.connected {color: #81c784}
+header aside.reconnecting {color: #ffb74d}
+header aside.disconnected {color: #ef5350}
+header aside.disconnected::before {animation: none}
+@keyframes pulse {
+    0%, 100% {opacity: 1; box-shadow: 0 0 6px currentColor}
+    50% {opacity: 0.3; box-shadow: 0 0 1px currentColor}
+}
+/* 主日志区域 */
+main { flex: 1; padding: 16px; overflow-y: auto }
+p { display: flex; gap: 8px; word-break: break-all; border-radius: 3px}
+p:hover { background-color: #222 }
+time { color: #777; flex-shrink: 0 }
+b { width: 40px; flex-shrink: 0; white-space: pre; text-align: right}
+b.INFO { color: #4fc3f7 }
+b.WARN { color: #ffb74d }
+b.ERROR { color: #ef5350 }
+b.SUCCESS { color: #81c784 }
+</style>
+</head>
+<body>
+<header>
+    <h1>📄 SMS Notifier</h1>
+    <aside id="status" class="connected">实时推送</aside>
+</header>
+<main id="log"></main>
+<script>
+let log = document.getElementById('log');
+let statusEl = document.getElementById('status');
+function appendLog(level, message, timestamp) {
+    let ts = timestamp || new Date().toLocaleString('zh-CN')
+    log.insertAdjacentHTML('beforeend', `<p>
+        <time>[${ts}]</time>
+        <b class="${level}">${level}</b>
+        <span>${message}</span>
+    </p>`);
+    log.scrollTop = log.scrollHeight;
+}
+function setStatus(state, text) {
+    statusEl.className = state
+    statusEl.textContent = text
+}
+function connectWebSocket(url) {
+    let ws = new WebSocket(url);
+    ws.onopen = () => {
+        // 每次(重)连服务端都会重发全量快照; 先清空再用快照替换整页,
+        // 避免频繁开关窗口时日志区被重复内容不断追加、无限膨胀.
+        log.innerHTML = '';
+        setStatus('connected', '实时推送');
+    };
+    ws.onmessage = (e) => {
+        let raw = typeof e.data === 'string' ? e.data : '';
+        if (!raw.trim()) return;
+        // 后端广播格式: "MM/DD HH:MM:SS message"
+        let ts = '';
+        let msg = raw;
+        let m = raw.match(/^(\d{2}\/\d{2} \d{2}:\d{2}:\d{2}) /);
+        if (m) {
+            ts = m[1];
+            msg = raw.slice(m[0].length);
+        }
+        // 从消息文本中提取级别: " INFO xxx" / "WARN xxx" / "ERROR xxx"
+        let level = 'INFO';
+        let lv = msg.match(/^ ?(INFO|WARN|ERROR) /);
+        if (lv) {
+            level = lv[1];
+            msg = msg.slice(lv[0].length);
+        }
+        appendLog(level, msg, ts);
+    };
+    ws.onclose = () => {
+        setStatus('reconnecting', '重新连接中...');
+        setTimeout(() => connectWebSocket(url), 3000);
+    };
+    ws.onerror = () => {
+        setStatus('disconnected', '连接失败');
+        ws.close();
+    };
+}
+// 启动 WebSocket 实时推送（端口由服务端注入到 window.__WS_PORT__）
+let port = window.__WS_PORT__;
+if (port) {
+    connectWebSocket('ws://' + location.hostname + ':' + port);
+} else {
+    setStatus('disconnected', '未启用实时推送');
+    appendLog('INFO', 'Loaded 3 mail account(s) with 7 keyword(s); starting listeners...');
+    appendLog('INFO', 'Logs WebSocket on ws://127.0.0.1:18081 (localhost only)');
+    appendLog('INFO', 'Server listening on http://192.168.2.20:18080 (LAN)');
+    appendLog('INFO', '[163] connected; IDLE unsupported, poll interval 30s');
+    appendLog('INFO', '[QQ] connected; IDLE push enabled');
+    appendLog('INFO', '[Gmail] connected; IDLE push enabled');
+}
+</script>
+</body>
+</html>

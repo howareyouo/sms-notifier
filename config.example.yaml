@@ -1,0 +1,54 @@
+# ============================================================
+# 邮件监听配置示例  (config.yaml)
+# 复制本文件为 config.yaml 并填入你自己的邮箱信息即可.
+#
+# match_keywords: 邮件内容(标题+发件人+正文)命中任意关键词(忽略大小写)
+#                 就会触发验证码自动提取.直接在这里增删关键词即可, 不用
+#                 改 Rust 源码重新编译.用 `match_keywords: []` 可显式关闭
+#                 关键词触发(即完全不自动提取验证码).
+#
+# notify_unmatched: true/false, 未命中关键词的新邮件是否也弹通知.
+#                  设为 false 则只有命中关键词(含验证码提取)的邮件才提醒,
+#                  可避免 GitHub 这类通知邮件刷屏.默认 true(每封新邮件都提醒).
+#
+# accounts 下每个账号字段说明:
+#   password : 对应邮箱的 IMAP 授权码(不是网页登录密码)
+#   port     : IMAP over SSL 端口, 一般为 993
+#   poll_interval: 轮询基准间隔(秒);不支持 IDLE 的邮箱按此轮询
+#   last_ok_interval: 由程序自动维护, 记录上次无报错运行的间隔, 重启后沿用
+# ============================================================
+
+match_keywords:
+  - "验证码"
+  - "校验码"
+  - "动态码"
+  - "一次性代码"
+  - "verification code"
+  - "verify code"
+  - "login code"
+#  - "OTP"
+#  - "security code"
+
+notify_unmatched: true
+
+accounts:
+  # ---- 示例: QQ (支持 IMAP IDLE push 实时推送) ----
+  - email: your_qq@qq.com
+    label: QQ
+    server: imap.qq.com
+    port: 993
+    password: 你的QQ邮箱IMAP授权码
+
+  # ---- 示例: Gmail (支持 IDLE push 实时推送) ----
+  - email: your@gmail.com
+    label: Gmail
+    server: imap.gmail.com
+    port: 993
+    password: 你的16位Google应用专用密码 (App Password)
+
+  # ---- 示例: /126/163 (不支持 IDLE, 按 poll_interval 轮询)----
+  - email: your_126@126.com
+    label: 126
+    server: imap.126.com
+    password: 你的126邮箱IMAP授权码
+    poll_interval: 30

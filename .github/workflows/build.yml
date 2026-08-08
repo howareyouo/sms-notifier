@@ -1,0 +1,84 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-build"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.11
+        with:
+          disable_annotations: true
+
+      - name: Build
+        run: cargo build --release
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Report binary size
+        run: |
+          $size = (Get-Item target/release/sms-notifier.exe).Length
+          echo "Binary size: $size bytes ($([math]::Round($size/1MB, 2)) MiB)"
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sms-notifier-windows
+          path: target/release/sms-notifier.exe
+          if-no-files-found: error
+
+  build-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-build"
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+
+      - name: Install sccache
+        uses: mozilla-actions/sccache-action@v0.0.11
+        with:
+          disable_annotations: true
+
+      - name: Build
+        run: cargo build --release
+        env:
+          RUSTC_WRAPPER: sccache
+
+      - name: Report binary size
+        run: ls -l target/release/sms-notifier
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: sms-notifier-macos
+          path: target/release/sms-notifier
+          if-no-files-found: error

@@ -1,0 +1,62 @@
+[package]
+name = "sms-notifier"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+png = "0.17"
+
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
+[dependencies]
+tungstenite = { version = "0.23", default-features = false, features = ["handshake"] }
+tray-icon = "0.24"
+arboard = { version = "3", default-features = false }
+tracing = "0.1"
+# Mail listener: TLS for IMAP, charset decoding, base64 for MIME
+# 字符集解码用 `encoding` 并只引用 GB18030/UTF-8 静态表, 配合 LTO 其余编码表
+# 会被链接器丢弃, 比 encoding_rs(其 for_label 会拖入全部编码表) 体积小很多.
+native-tls = "0.2"
+encoding = "0.2"
+base64 = "0.22"
+socket2 = "0.5"
+
+[target.'cfg(windows)'.dependencies]
+tauri-winrt-notification = "0.7"
+windows-sys = { version = "0.61", features = [
+    "Win32_System_Console",
+    "Win32_UI_WindowsAndMessaging",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_Foundation",
+    "Win32_System_SystemInformation",
+    "Win32_System_Com",
+    "Win32_System_Threading"
+] }
+windows = { version = "0.60", features = [
+    "Win32_Foundation",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_System_Com",
+    "Win32_System_Com_StructuredStorage",
+    "Win32_System_Variant",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_PropertiesSystem"
+] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.24"
+mac-notification-sys = "0.6"
+# `tray-icon` 0.24 已经在依赖树中拉入了 objc2 0.6, 这里显式声明以便我们在
+# 自定义事件循环中直接使用 NSApplication / NSDate / NSString.
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSDate", "NSString"] }
+
+[profile.release]
+strip = true
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+opt-level = "z"

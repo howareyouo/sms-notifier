@@ -1,0 +1,23 @@
+.*/
+
+# Rust build output
+/target
+
+# Build artifacts
+*.exe
+*.dll
+
+# Logs
+*.log
+
+# CI bloat analysis (downloaded locally for inspection; regenerate in CI)
+bloat-*/
+
+# Python reference implementation (top-level mail/ folder only;
+# the Rust port lives in src/mail/ and must stay tracked).
+/mail/
+
+# Mail listener config (contains IMAP auth codes)
+config.yaml
+
+!.github/
